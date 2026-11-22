@@ -9,6 +9,7 @@ import { Profissional } from '../domain/Profissional';
 import { AdaptadorArmazenamento } from '../adapters/armazenamento/AdaptadorArmazenamento';
 import { AdaptadorPagamento } from '../adapters/pagamento/AdaptadorPagamento';
 import { AdaptadorProfissional } from '../adapters/profissional/AdaptadorProfissional';
+import { RegistradorProjeto } from '../integracao/RegistradorProjeto';
 
 export class SistemaRecomendacao {
     private observadores: Observador[] = [];
@@ -17,6 +18,7 @@ export class SistemaRecomendacao {
     private adaptadorArmazenamento?: AdaptadorArmazenamento;
     private adaptadorPagamento?: AdaptadorPagamento;
     private adaptadorProfissional?: AdaptadorProfissional;
+    private registradorProjeto?: RegistradorProjeto;
 
     constructor(
         private readonly orquestrador: OrquestradorEquipe,
@@ -41,6 +43,29 @@ export class SistemaRecomendacao {
         this.adaptadorProfissional = profissional;
     }
 
+    definirRegistradorProjeto(
+        registrador: RegistradorProjeto
+    ): void {
+        this.registradorProjeto = registrador;
+    }
+
+    private async registrarProjeto(
+        projeto: Projeto
+    ): Promise<void> {
+        if (!this.registradorProjeto) {
+            return;
+        }
+
+        try {
+            await this.registradorProjeto.registrar(projeto);
+        } catch (erro) {
+            console.error(
+                'Falha ao registrar o projeto:',
+                (erro as Error).message
+            );
+        }
+    }
+
     anexarArquivoAoProjeto(
         projetoId: string,
         nomeArquivo: string,
@@ -50,6 +75,14 @@ export class SistemaRecomendacao {
             pasta: `projetos/${projetoId}`,
             nome: nomeArquivo
         });
+    }
+
+    private resumirMembros(equipe: Equipe) {
+        return equipe.contem().map((m) => ({
+            papel: m.papel,
+            profissionalId: m.profissional.id,
+            profissionalNome: m.profissional.nome
+        }));
     }
 
     listarArquivosDoProjeto(projetoId: string): string[] {
@@ -152,13 +185,14 @@ export class SistemaRecomendacao {
                 'RECOMENDACAO_GERADA',
                 new Map<string, unknown>([
                     ['projetoId', projeto.id],
-                    ['equipeId', equipe.id]
+                    ['equipeId', equipe.id],
+                    ['membros', this.resumirMembros(equipe)]
                 ]),
                 'SistemaRecomendacao'
             );
 
         this.notificarObservadores(evento);
-
+        await this.registrarProjeto(projeto);
         return equipe;
     }
 
@@ -185,7 +219,8 @@ export class SistemaRecomendacao {
             new Map<string, unknown>([
                 ['projetoId', projeto.id],
                 ['equipeId', equipe.id],
-                ['tipoProjeto', tipoProjeto]
+                ['tipoProjeto', tipoProjeto],
+                ['membros', this.resumirMembros(equipe)]
             ]),
             'SistemaRecomendacao'
         );
@@ -193,7 +228,7 @@ export class SistemaRecomendacao {
         this.notificarObservadores(evento);
 
         fabrica.criarNotificador().atualizar(evento);
-
+        await this.registrarProjeto(projeto);
         return { projeto, equipe };
     }
 }

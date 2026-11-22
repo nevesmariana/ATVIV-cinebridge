@@ -1,0 +1,19 @@
+{
+    "projeto": {
+        "id": "proj-1",
+        "genero": "documentario",
+        "duracao": 90,
+        "orcamento": 30000,
+        "prazo": "2035-01-01",
+        "papeisExigidos": [
+            {
+                "papel": "DIRETOR",
+                "peso": 1
+            },
+            {
+                "papel": "EDITOR",
+                "peso": 1
+            }
+        ]
+    }
+}

@@ -1,0 +1,196 @@
+services:
+
+  cinebridge-api:
+    build: .
+    container_name: cinebridge-api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@recomendacoes-db:5432/recomendacoes?schema=public
+      RABBITMQ_URL: amqp://guest:guest@cinebridge-mq:5672
+    depends_on:
+      recomendacoes-db:
+        condition: service_healthy
+      cinebridge-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cinebridge-net
+
+  cinebridge-profissionais:
+    build: ./services/profissionais
+    container_name: cinebridge-profissionais
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@profissionais-db:5432/profissionais?schema=public
+      RABBITMQ_URL: amqp://guest:guest@cinebridge-mq:5672
+    depends_on:
+      profissionais-db:
+        condition: service_healthy
+      cinebridge-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cinebridge-net
+
+  cinebridge-projetos:
+    build: ./services/projetos
+    container_name: cinebridge-projetos
+    ports:
+      - "3002:3002"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@projetos-db:5432/projetos?schema=public
+      RABBITMQ_URL: amqp://guest:guest@cinebridge-mq:5672
+    depends_on:
+      projetos-db:
+        condition: service_healthy
+      cinebridge-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cinebridge-net
+
+  cinebridge-notificacoes:
+    build: ./services/notificacoes
+    container_name: cinebridge-notificacoes
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@notificacoes-db:5432/notificacoes?schema=public
+      RABBITMQ_URL: amqp://guest:guest@cinebridge-mq:5672
+    depends_on:
+      notificacoes-db:
+        condition: service_healthy
+      cinebridge-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cinebridge-net
+
+  cinebridge-mq:
+    image: rabbitmq:3-management-alpine
+    container_name: cinebridge-mq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - mq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    networks:
+      - cinebridge-net
+
+  profissionais-db:
+    image: postgres:15-alpine
+    container_name: profissionais-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: profissionais
+    volumes:
+      - profissionais-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d profissionais"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cinebridge-net
+
+  projetos-db:
+    image: postgres:15-alpine
+    container_name: projetos-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: projetos
+    volumes:
+      - projetos-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d projetos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cinebridge-net
+
+  recomendacoes-db:
+    image: postgres:15-alpine
+    container_name: recomendacoes-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: recomendacoes
+    volumes:
+      - recomendacoes-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d recomendacoes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cinebridge-net
+
+  notificacoes-db:
+    image: postgres:15-alpine
+    container_name: notificacoes-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notificacoes
+    volumes:
+      - notificacoes-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificacoes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cinebridge-net
+
+volumes:
+  mq-data:
+  profissionais-data:
+  projetos-data:
+  recomendacoes-data:
+  notificacoes-data:
+
+networks:
+  cinebridge-net:
+    driver: bridge

@@ -18,9 +18,13 @@ import { AuditoriaRecomendacao } from '../observers/AuditoriaRecomendacao';
 import { FabricaDocumentario } from '../factories/documentario/FabricaDocumentario';
 import { FabricaAnimacao } from '../factories/animacao/FabricaAnimacao';
 import { FabricaPublicitario } from '../factories/publicitario/FabricaPublicitario';
+import { RegistradorProjeto } from '../integracao/RegistradorProjeto';
+import { Observador } from '../observers/Observador';
 
 export function buildApp(
-    repositorio: RepositorioProfissional
+    repositorio: RepositorioProfissional,
+    registrador?: RegistradorProjeto,
+    observadoresExtras: Observador[] = []
 ): FastifyInstance {
 
     const app = Fastify({
@@ -49,6 +53,16 @@ export function buildApp(
     sistema.adicionarObservador(
         new AuditoriaRecomendacao()
     );
+
+    for (const observador of observadoresExtras) {
+        sistema.adicionarObservador(observador);
+    }
+
+    if (registrador) {
+        sistema.definirRegistradorProjeto(
+            registrador
+        );
+    }
 
     sistema.registrarFabrica(
         'documentario',
